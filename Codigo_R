@@ -1,0 +1,125 @@
+# Leyendo los datos
+esfuerzo<- read.table("C:/Users/LENOVO/Documents/Regresion/Trabajo final Articulo/esfuerzo.txt",fill=T, header=T)
+esfuerzo
+#Análisis inicial de la base de datos
+summary(esfuerzo)
+#Vectorizando las variables
+material<-esfuerzo[,1]
+tiempo<-esfuerzo[,2]
+muestra<-esfuerzo[,3]
+muestra<-factor(muestra)
+peso<-esfuerzo[,4]
+resistencia<-esfuerzo[,5]
+falla<-esfuerzo[,6]
+levels(material)<-c("convencional", "acero", "polipropileno")
+
+#Calculo de correlación entre las variables cualitativas
+par(mfrow=c(1, 1), cex=1.4)
+tabla<-esfuerzo[,c("Esfuerzo","Peso","Tiempo")]
+pairs(tabla)
+panel.cor <- function(x, y, digits=2, prefix="", cex.cor)
+{
+  usr <- par("usr"); on.exit(par(usr))
+  par(usr = c(0, 1, 0, 1))
+  r <- abs(cor(x, y))
+  txt <- format(c(r, 0.123456789), digits=digits)[1]
+  txt <- paste(prefix, txt, sep="")
+  if(missing(cex.cor)) cex <- 0.8/strwidth(txt)
+  text(0.5, 0.5, txt, cex = cex)
+}
+pairs(tabla, lower.panel= panel.cor)
+
+#Graficas descriptivas boxplot
+  par(mfrow=c(1,2))
+boxplot(resistencia ~ material, xlab="Tipo de material", ylab="Resistencia (MPa)", cex.axis= 1, cex.lab= 1.5)
+boxplot(resistencia ~ tiempo, xlab="Tiempo (dias)", ylab="Resistencia (MPa)", cex.axis= 1, cex.lab= 1.5)
+
+#Grafico 3D
+require(rgl)
+with(esfuerzo, plot3d(x= tiempo, y= peso, z=resistencia, xlab= "Tiempo (dias)", ylab= "Peso (gr)", zlab="Resistencia (MPa)",col= "red"))
+
+#Prueba de Normalidad
+require(nortest)
+shapiro.test(resistencia)
+
+#Histograma y densidad de la variable respuesta
+hist(resistencia, breaks= 30, xlab= "Resistencia (MPa)", ylab="Frecuencia", cex.axis= 1, cex.lab= 1.5)
+plot(density(resistencia), xlab="Resistencia (MPa)", ylab="Densidad", cex.axis= 1, cex.lab= 1.5)
+
+par(mfrow=c(1,1))
+interaction.plot(x.factor=tiempo, trace.factor=material, response= resistencia, xlab= "Tiempo (dias)", ylab= "Resistencia (MPa)", cex.axis= 1.5, cex.lab= 1.5)
+
+#Calculo Gamlss
+require(gamlss)
+
+fitDist(resistencia, k=2, type= "realplus")
+mod1<-fitDist(resistencia,type='realplus',k=log(nrow(esfuerzo)))        
+mod1$fits
+par(mfrow=c(1,3))
+m1<-histDist(resistencia,family=WEI3,nbins=30, xlab= "Resistencia (Mpa)",main= "WEI3")
+m2<-histDist(resistencia,family=GG,nbins=30, xlab= "Resistencia (Mpa)",main= "GG")
+m3<-histDist(resistencia,family=GA,nbins=30, xlab= "Resistencia (Mpa)",main= "GA")
+
+#Modelos propuestos con las 3 distribuciones seleccionadas
+empty.WEI3<-gamlss(resistencia~1,sigma.fo=~1,famly=WEI3)
+mod.WEI3<-stepGAICAll.A(object=empty.WEI3,k=2,scope=list(lower=~1,upper=~peso+tiempo+material),
+                      sigma.scope=list(lower=~1,upper=~peso+tiempo+material))
+mod1.WEI3<- gamlss( resistencia ~ tiempo + material, sigma.fo=~1, family = WEI3)
+mod2.WEI3<- gamlss( resistencia ~ tiempo + material, sigma.fo=~ tiempo, family = WEI3)
+mod3.WEI3<- gamlss( resistencia ~ tiempo + material, sigma.fo=~ material, family = WEI3)
+mod4.WEI3<- gamlss( resistencia ~ tiempo + material, sigma.fo= ~ material + tiempo, family = WEI3)
+
+summary(mod1.WEI3)
+summary(mod2.WEI3)
+summary(mod3.WEI3)
+summary(mod4.WEI3)
+
+empty.GG<-gamlss(resistencia~1,famly=GG)
+mod.GG<-stepGAICAll.A(object=empty.GG,k=2,scope=list(lower=~1,upper=~peso+tiempo+material),
+                      sigma.scope=list(lower=~1,upper=~peso+tiempo+material))
+mod1.GG<-gamlss( resistencia ~ tiempo+material, sigma.fo=~1, family = GG, 
+                 control=gamlss.control(n.cyc=80), i.control=glim.control(cyc=50))
+mod2.GG<-gamlss( resistencia ~ tiempo+material, sigma.fo=~tiempo, family = GG,
+                 control=gamlss.control(n.cyc=80), i.control=glim.control(cyc=50))
+mod3.GG<-gamlss( resistencia ~ tiempo+material, sigma.fo=~material, family = GG,
+                 control=gamlss.control(n.cyc=80), i.control=glim.control(cyc=50))
+mod4.GG<-gamlss( resistencia ~ tiempo+material, sigma.fo=~tiempo+material, family = GG,
+                 control=gamlss.control(n.cyc=80), i.control=glim.control(cyc=50))
+summary(mod1.GG)
+summary(mod2.GG)
+summary(mod3.GG)
+summary(mod4.GG)
+
+empty.GA<-gamlss(resistencia~1,famly=GA)
+mod.GA<-stepGAICAll.A(object=empty.GA,k=2,scope=list(lower=~1,upper=~peso+tiempo+material),
+                      sigma.scope=list(lower=~1,upper=~peso+tiempo+material))
+mod1.GA<-gamlss( resistencia ~ tiempo+material, sigma.fo=~1, family = GA)
+mod2.GA<-gamlss( resistencia ~ tiempo+material, sigma.fo=~tiempo, family = GA)
+mod3.GA<-gamlss( resistencia ~ tiempo+material, sigma.fo=~material, family = GA)
+mod4.GA<-gamlss( resistencia ~ tiempo+material, sigma.fo=~tiempo+material, family = GA)
+
+summary(mod1.GA)
+summary(mod2.GA)
+summary(mod3.GA)
+summary(mod4.GA)
+
+#Calculo de AIC
+
+AIC(mod1.WEI3,k=2)
+AIC(mod2.WEI3,k=2)
+AIC(mod3.WEI3,k=2)
+AIC(mod4.WEI3,k=2)
+AIC(mod1.GG,k=2)
+AIC(mod2.GG,k=2)
+AIC(mod3.GG,k=2)
+AIC(mod4.GG,k=2)
+AIC(mod1.GA,k=2)
+AIC(mod2.GA,k=2)
+AIC(mod3.GA,k=2)
+AIC(mod4.GA,k=2)
+
+par(mfrow=c(1,1))
+plot(mod4.GG)
+wp(mod4.GG)
+
+
