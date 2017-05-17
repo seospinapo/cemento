@@ -1,5 +1,5 @@
 # Leyendo los datos
-esfuerzo<- read.table("C:/Users/LENOVO/Documents/Regresion/Trabajo final Articulo/esfuerzo.txt",fill=T, header=T)
+esfuerzo<- read.table(file= "https://raw.githubusercontent.com/seospinapo/cemento/master/datos",fill=T, header=T)
 esfuerzo
 #Análisis inicial de la base de datos
 summary(esfuerzo)
